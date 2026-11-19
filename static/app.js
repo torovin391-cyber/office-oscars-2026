@@ -2,6 +2,15 @@
   'use strict';
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.documentElement.classList.add('js-ready');
+  // Play the opening curtain on the first visit in this tab, not on every refresh.
+  try {
+    if (sessionStorage.getItem('officeOscarsCurtainSeen') === 'yes') {
+      document.documentElement.classList.add('intro-seen');
+    } else {
+      sessionStorage.setItem('officeOscarsCurtainSeen', 'yes');
+    }
+  } catch (_) { /* Private mode can block storage; visual experience still works. */ }
+
 
   // Reveal content, but never hide it when animations are disabled or unsupported.
   const reveals = document.querySelectorAll('.reveal');
@@ -27,20 +36,32 @@
   const progress = document.querySelector('#readingProgress');
   const mobileRsvp = document.querySelector('.mobile-rsvp');
   const rsvpSection = document.querySelector('#rsvp');
+  const heroSection = document.querySelector('#top');
+  const footerSection = document.querySelector('.site-footer');
+  const siteHeader = document.querySelector('#siteHeader');
+
   let scrollScheduled = false;
   function onScroll() {
     scrollScheduled = false;
     const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
     progress.style.width = `${Math.min(100, Math.max(0, scrollY / max * 100))}%`;
-    if (mobileRsvp && rsvpSection) {
+    if (siteHeader) siteHeader.classList.toggle('is-scrolled', scrollY > 32);
+    if (mobileRsvp && rsvpSection && heroSection) {
       const bounds = rsvpSection.getBoundingClientRect();
-      mobileRsvp.classList.toggle('is-hidden', bounds.top < innerHeight * .72 && bounds.bottom > 90);
+      const heroBounds = heroSection.getBoundingClientRect();
+      const footerBounds = footerSection ? footerSection.getBoundingClientRect() : null;
+      const atForm = bounds.top < innerHeight * .75 && bounds.bottom > 65;
+      const atFooter = footerBounds && footerBounds.top < innerHeight * .9;
+      const pastHero = heroBounds.bottom < innerHeight * .57;
+      mobileRsvp.classList.toggle('is-active', pastHero && !atForm && !atFooter);
+      mobileRsvp.classList.toggle('is-hidden', !pastHero || atForm || atFooter);
     }
   }
   window.addEventListener('scroll', () => {
     if (!scrollScheduled) { scrollScheduled = true; requestAnimationFrame(onScroll); }
   }, { passive: true });
   onScroll();
+  window.addEventListener('resize', onScroll, { passive: true });
 
   // Event starts 2026-12-26 at 18:00 in Moscow (UTC+3): 15:00 UTC.
   const eventTime = Date.parse('2026-12-26T18:00:00+03:00');
@@ -81,6 +102,37 @@
       finalConfetti.appendChild(item);
     }
   }
+
+
+  // Minimal, keyboard-accessible mobile navigation.
+  const menuToggle = document.getElementById('menuToggle');
+  const menu = document.getElementById('mobileMenu');
+  function setMenu(open) {
+    if (!menu || !menuToggle) return;
+    menu.hidden = !open;
+    menuToggle.setAttribute('aria-expanded', String(open));
+    menuToggle.setAttribute('aria-label', open ? 'Закрыть меню' : 'Открыть меню');
+    document.body.classList.toggle('menu-open', open);
+    if (open) menu.querySelector('a')?.focus();
+  }
+  menuToggle?.addEventListener('click', () => setMenu(menu.hidden));
+  menu?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => setMenu(false)));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && menu && !menu.hidden) {
+      setMenu(false);
+      menuToggle?.focus();
+    }
+  });
+  window.matchMedia('(min-width: 761px)').addEventListener('change', event => {
+    if (event.matches) setMenu(false);
+  });
+
+  // A small tactile surprise for phone users: still no spoilers revealed.
+  const envelope = document.getElementById('secretEnvelope');
+  envelope?.addEventListener('click', () => {
+    const open = envelope.classList.toggle('is-open');
+    envelope.setAttribute('aria-pressed', String(open));
+  });
 
   const form = document.getElementById('rsvpForm');
   const submitButton = document.getElementById('submitButton');
