@@ -6,4 +6,5 @@ COPY static ./static
 RUN mkdir -p /data && chown -R 10001:10001 /app /data
 USER 10001:10001
 EXPOSE 8000
+VOLUME ["/data"]
 CMD ["python", "server.py"]
