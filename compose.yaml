@@ -1,0 +1,14 @@
+services:
+  office-oscars:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      INVITE_ACCESS_CODE: ${INVITE_ACCESS_CODE:-}
+    volumes:
+      - office_oscars_data:/data
+    restart: unless-stopped
+volumes:
+  office_oscars_data:
